@@ -1,0 +1,211 @@
+<?php
+
+/**
+ * @file
+ * Contains various hooks for soft deletion of node.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function soft_deletion_permission() {
+  $permissions = array();
+
+  $permissions['access to put content into recycle bin'] = array(
+    'title' => t("Access to put content into recycle-bin"),
+    'description' => t("Specify whether or not soft deleted content may be soft-deleted by a role."),
+  );
+
+  $permissions['access to restore content from recycle bin'] = array(
+    'title' => t("Access to restore content from recycle-bin"),
+    'description' => t("Specify whether or not soft deleted content may be restore by a role."),
+  );
+
+  return $permissions;
+}
+
+/**
+ * Implements hook_schema_alter().
+ */
+function soft_deletion_schema_alter(&$schema) {
+  $schema['node']['fields']['isDeleted'] = array(
+    'description' => 'Content deletion status.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+}
+
+/**
+ * Implements Implements hook_entity_property_info_alter().
+ */
+function soft_deletion_entity_property_info_alter(&$info) {
+  foreach ($info['node']['bundles'] as $entity_type) {
+    $properties = $entity_type['properties'];
+    $properties['properties']['isDeleted'] = array(
+      'label' => t('isDeleted'),
+      'type' => 'integer',
+      'description' => t('Node deletion status'),
+      'schema field' => 'isDeleted',
+    );
+  }
+  return $properties;
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function soft_deletion_node_delete($node) {
+  global $user;
+  if (user_access('access to put content into recycle bin')) {
+    if (isset($node)) {
+      db_update('node')
+        ->fields(array('isDeleted' => 1))
+        ->condition('nid', $node->nid)
+        ->execute();
+      drupal_set_message(t("Indholdet er blevet flyttet til papirkurven."));
+      drupal_goto('admin/content');
+    }
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function soft_deletion_menu() {
+  $items['recycle-content'] = array(
+    'title' => 'papirkurv',
+    'menu_name' => 'management',
+    'module' => 'menu',
+    'language' => 'und',
+    // Page callback.
+    'page callback' => 'soft_deletion_recycle_content',
+    // Access callback.
+    'access callback' => user_access('access to restore content from recycle bin'),
+    'weight' => -1,
+  );
+  $items['recycle-confirm/%'] = array(
+    'title' => 'Konformere gendannelse',
+    // Page callback.
+    'page callback' => 'drupal_get_form',
+    // Access callback.
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+    'page arguments' => array('soft_deletion_confirm_form'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements soft_deletion_recycle_content().
+ */
+function soft_deletion_recycle_content() {
+  if (user_access('access to restore content from recycle bin')) {
+    drupal_set_title(t('Indholdet af papirkurven'));
+    $nodes = node_load_multiple(array(), array('isDeleted' => 1));
+    $header = array(
+      'Title', 'Type', 'Created', 'Published', 'Promoted', 'Operation',
+    );
+    $rows = array();
+    $no_yes = array('No', 'Yes');
+    if (count($nodes) > 0) {
+      foreach ($nodes as $node) {
+        $rows[] = array(
+          $node->title,
+          $node->type,
+          format_date($node->created),
+          $no_yes[$node->status],
+          $no_yes[$node->promote],
+          l(t('Gendan'), 'recycle-confirm/' . $node->nid),
+        );
+      }
+    }
+    else {
+      drupal_set_message(t('Ingen data fundet i papirkurven.'));
+    }
+    return theme('table', array('header' => $header, 'rows' => $rows));
+  }
+  else {
+    drupal_set_message(t('Access denied.'));
+    drupal_goto('admin/content');
+  }
+}
+
+/**
+ * Implements soft_deletion_recycle_confirm().
+ */
+function soft_deletion_confirm_form($form, &$form_state) {
+  if (user_access('access to restore content from recycle bin')) {
+    drupal_set_title(t('Gendannelses-Konformation'));
+    $question = 'Er du sikker du vil gendanne indholdet?';
+    $path = 'recycle-content';
+    $description = 'Denne indhold vil blive gendannet.';
+    $yes = 'Gendan';
+    $no = 'Annulere';
+    $name = 'Godkend';
+    return confirm_form($form, $question, $path, $description, $yes, $no, $name);
+  }
+  else {
+    drupal_set_message(t('Access denied.'));
+    drupal_goto('admin/content');
+  }
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function soft_deletion_confirm_form_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == 'Gendan' && is_numeric(arg(1))) {
+    $nid = arg(1);
+          db_update('node')
+        ->fields(array('isDeleted' => 0))
+        ->condition('nid', $nid)
+        ->execute();
+    //Clear cache on field to update value on front end
+    drupal_flush_all_caches();
+    drupal_set_message(t("Indholdet er blevet gendannet."));
+    drupal_goto('recycle-content');
+  }
+  else {
+    $form_state['redirect'] = 'recycle-content';
+  }
+}
+
+/**
+ * Implements hook_views_query_alter().
+ */
+function soft_deletion_views_query_alter(&$view, $query) {
+  if ($view->name == 'admin_views_node' && $view->current_display == 'system_1') {
+    foreach ($query->where as &$condition_group) {
+      $condition_group['conditions'][] = array(
+        'field' => 'isDeleted',
+        'value' => 0,
+        'operator' => '=',
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function soft_deletion_node_view($node, $view_mode, $langcode) {
+  if (isset($node->isDeleted)) {
+    if ($node->isDeleted == '1') {
+      drupal_set_message(t("Access denied."));
+      drupal_goto('admin/content');
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
+
+  if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']) && $form['#node']->isDeleted == '1')) {
+    drupal_set_message(t("Access denied."));
+    drupal_goto('admin/content');
+  }
+}

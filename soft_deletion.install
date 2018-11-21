@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * @file
+ * Install/uninstall functions for the Soft Deletion module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function soft_deletion_install() {
+  $definition = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_add_field('node', 'isDeleted', $definition);
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function soft_deletion_uninstall() {
+  db_drop_field('node', 'isDeleted');
+}
