@@ -34,6 +34,12 @@ function soft_deletion_schema_alter(&$schema) {
     'not null' => TRUE,
     'default' => 0,
   );
+  $schema['node']['fields']['deletedTime'] = array(
+    'description' => 'Content deletion time.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
 }
 
 /**
@@ -48,6 +54,12 @@ function soft_deletion_entity_property_info_alter(&$info) {
       'description' => t('Node deletion status'),
       'schema field' => 'isDeleted',
     );
+    $properties['properties']['deletedTime'] = array(
+      'label' => t('deletedTime'),
+      'type' => 'integer',
+      'description' => t('Node deletion time'),
+      'schema field' => 'deletedTime',
+    );
   }
   return $properties;
 }
@@ -58,9 +70,10 @@ function soft_deletion_entity_property_info_alter(&$info) {
 function soft_deletion_node_delete($node) {
   global $user;
   if (user_access('access to put content into recycle bin')) {
-    if (isset($node)) {
+    if (isset($node) && $node->isDeleted != 1) {
       db_update('node')
-        ->fields(array('isDeleted' => 1))
+        ->fields(array('isDeleted' => 1,
+          'deletedTime' =>  time()))
         ->condition('nid', $node->nid)
         ->execute();
       drupal_set_message(t("Indholdet er blevet flyttet til papirkurven."));
@@ -105,7 +118,7 @@ function soft_deletion_recycle_content() {
     drupal_set_title(t('Indholdet af papirkurven'));
     $nodes = node_load_multiple(array(), array('isDeleted' => 1));
     $header = array(
-      'Title', 'Type', 'Created', 'Published', 'Promoted', 'Operation',
+      'Title', 'Type', 'Created', 'deletedTime', 'Published', 'Promoted', 'Operation',
     );
     $rows = array();
     $no_yes = array('No', 'Yes');
@@ -115,6 +128,7 @@ function soft_deletion_recycle_content() {
           $node->title,
           $node->type,
           format_date($node->created),
+          format_date($node->deletedTime),
           $no_yes[$node->status],
           $no_yes[$node->promote],
           l(t('Gendan'), 'recycle-confirm/' . $node->nid),
@@ -208,4 +222,47 @@ function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
     drupal_set_message(t("Access denied."));
     drupal_goto('admin/content');
   }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function soft_deletion_cron() {
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'node')
+    ->propertyCondition('isDeleted', 1)
+    ->propertyCondition('deletedTime',  strtotime('-2 month'), '<=');
+    $nodes = $query->execute();
+
+    $queue = DrupalQueue::get('papirkurv');
+
+    // Process the queue till it is empty.
+    if ($queue->numberOfItems() == 0) {
+      foreach ($nodes['node'] as $node) {
+        $queue->createItem($node->nid);
+      }    
+    }
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function soft_deletion_cron_queue_info() {
+  $queues['papirkurv'] = array(
+    'worker callback' => 'soft_deletion_worker',
+    'time' => 60,
+  );
+  return $queues;
+}
+
+/**
+ * Cron queue worker callback function.
+ *
+ * @param mixed $data
+ *   User account.
+ */
+function soft_deletion_worker($data) {
+
+        node_delete($data);
+    
 }
