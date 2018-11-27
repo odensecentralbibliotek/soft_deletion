@@ -87,7 +87,7 @@ function soft_deletion_node_delete($node) {
  */
 function soft_deletion_menu() {
   $items['recycle-content'] = array(
-    'title' => 'papirkurv',
+    'title' => 'Papirkurv',
     'menu_name' => 'management',
     'module' => 'menu',
     'language' => 'und',
