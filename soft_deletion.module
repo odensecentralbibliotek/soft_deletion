@@ -118,7 +118,7 @@ function soft_deletion_recycle_content() {
     drupal_set_title(t('Indholdet af papirkurven'));
     $nodes = node_load_multiple(array(), array('isDeleted' => 1));
     $header = array(
-      'Title', 'Type', 'Created', 'deletedTime', 'Published', 'Promoted', 'Operation',
+      'Titel', 'Type', 'Oprettet', 'Slettet', 'Udgivet', 'På forsiden', 'Handling',
     );
     $rows = array();
     $no_yes = array('No', 'Yes');
