@@ -94,7 +94,7 @@ function soft_deletion_menu() {
     // Page callback.
     'page callback' => 'soft_deletion_recycle_content',
     // Access callback.
-    'access callback' => user_access('access to restore content from recycle bin'),
+    'access callback' => 'soft_deletion_user_has_role',
     'weight' => -1,
   );
   $items['recycle-confirm/%'] = array(
@@ -108,6 +108,17 @@ function soft_deletion_menu() {
   );
 
   return $items;
+}
+
+function soft_deletion_user_has_role() {    
+    $access = user_access('access to restore content from recycle bin');
+
+  if (!$access) {
+      return FALSE;
+  }else{
+   
+        return TRUE;    
+  }
 }
 
 /**
