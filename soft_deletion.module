@@ -64,22 +64,51 @@ function soft_deletion_entity_property_info_alter(&$info) {
   return $properties;
 }
 
+function soft_deletion_views_bulk_operations_form_alter(&$form, &$form_state, $vbo) {
+    if ($form_state['step'] == 'views_bulk_operations_confirm_form') {
+        if ($form_state['values']['operation'] == "action::views_bulk_operations_delete_item") {
+            soft_deletion_node_delete_multiple($form_state['values']['views_bulk_operations']);
+        }
+    }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function soft_deletion_node_delete_multiple($nids) {
+    if (user_access('access to put content into recycle bin')) {
+        foreach ($nids as $nid) {
+            if ($nid !== 0) {
+                $node = node_load($nid);
+                if (isset($node) && $node->isDeleted != 1) {
+                    db_update('node')
+                        ->fields(array('isDeleted' => 1,
+                          'deletedTime' => time()))
+                        ->condition('nid', $node->nid)
+                        ->execute();
+                    drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
+                }
+            }
+        }
+        drupal_goto('admin/content');
+    }
+}
+
 /**
  * Implements hook_node_delete().
  */
 function soft_deletion_node_delete($node) {
-  global $user;
-  if (user_access('access to put content into recycle bin')) {
-    if (isset($node) && $node->isDeleted != 1) {
-      db_update('node')
-        ->fields(array('isDeleted' => 1,
-          'deletedTime' =>  time()))
-        ->condition('nid', $node->nid)
-        ->execute();
-      drupal_set_message(t("Indholdet er blevet flyttet til papirkurven."));
-      drupal_goto('admin/content');
+    if (user_access('access to put content into recycle bin')) {
+        if (isset($node) && $node->isDeleted != 1) {
+            db_update('node')
+                ->fields(array('isDeleted' => 1,
+                  'deletedTime' => time()))
+                ->condition('nid', $node->nid)
+                ->execute();
+            drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
+            drupal_goto('admin/content');
+        }
     }
-  }
 }
 
 /**
