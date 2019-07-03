@@ -375,7 +375,7 @@ function soft_deletion_cron() {
       foreach ($files['file'] as $file) {
         $file_queue->createItem($file->fid);
       }
-      }
+    }
 }
 
 /**
@@ -410,8 +410,7 @@ function soft_deletion_worker($data) {
  * @param mixed $data
  *   User account.
  */
-function soft_deletion_worker_files($data) {
-
+function soft_deletion_worker_files($fid) {
+        $data = file_load($fid);
         file_delete($data);
-
 }
