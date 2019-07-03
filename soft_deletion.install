@@ -22,11 +22,26 @@ function soft_deletion_install() {
   db_add_field('node', 'isDeleted', $definition);
   db_add_field('node', 'deletedTime', $def2);
 }
-
+function soft_deletion_update_7101() {
+   $definition = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  $def2 = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_add_field('file_managed', 'isDeleted', $definition);
+  db_add_field('file_managed', 'deletedTime', $def2);
+}
 /**
  * Implements hook_uninstall().
  */
 function soft_deletion_uninstall() {
   db_drop_field('node', 'isDeleted');
   db_drop_field('node', 'deletedTime');
+  db_drop_field('file_managed', 'isDeleted');
+  db_drop_field('file_managed', 'deletedTime');
 }
