@@ -118,6 +118,9 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
                     }
                 }else {
                   $node = node_load($nid);
+                if (isset($node) && $node->type == 'inspirations_liste') {
+                        return;
+                }
                 if (isset($node) && $node->isDeleted != 1) {
                     db_update('node')
                         ->fields(array('isDeleted' => 1,
@@ -137,6 +140,9 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
  * Implements hook_node_delete().
  */
 function soft_deletion_node_delete($node) {
+    if (isset($node) && $node->type == 'inspirations_liste') {
+        return;
+    }
     if (user_access('access to put content into recycle bin')) {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('node')
