@@ -334,7 +334,7 @@ function soft_deletion_views_query_alter(&$view, $query) {
  */
 function soft_deletion_node_view($node, $view_mode, $langcode) {
   if (isset($node->isDeleted)) {
-    if ($node->isDeleted == '1') {
+    if ($node->isDeleted == '1' && $view_mode != 'search_index') {
       drupal_set_message(t("Access denied."));
       drupal_goto('admin/content');
     }
