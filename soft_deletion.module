@@ -162,7 +162,7 @@ function soft_deletion_node_delete($node) {
 function soft_deletion_file_delete($node) {
     if (user_access('access to put content into recycle bin')) {
         // Don't goto admin/file removing images from node edit
-        $node_edit = explode('/', parse_url($_SERVER[HTTP_REFERER], PHP_URL_PATH));
+        $node_edit = explode('/', parse_url($_SERVER['HTTP_REFERER'], PHP_URL_PATH));
         if ($node_edit[1] != 'node') {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('file_managed')
