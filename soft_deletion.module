@@ -350,7 +350,7 @@ function soft_deletion_node_view($node, $view_mode, $langcode) {
  */
 function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
 
-  if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']) && $form['#node']->isDeleted == '1')) {
+  if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']->isDeleted) && $form['#node']->isDeleted == '1')) {
     drupal_set_message(t("Access denied."));
     drupal_goto('admin/content');
   }
