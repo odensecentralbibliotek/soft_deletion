@@ -111,7 +111,8 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
                     if (isset($file) && $file->isDeleted != 1) {
                        db_update('file_managed')
                         ->fields(array('isDeleted' => 1,
-                          'deletedTime' => time()))
+                          'deletedTime' => time(),
+                          'status' => 0))
                         ->condition('fid', $file->fid)
                         ->execute();
                     drupal_set_message($file->filename . ' er blevet flyttet til papirkurven.');
@@ -121,7 +122,8 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
                 if (isset($node) && $node->isDeleted != 1) {
                     db_update('node')
                         ->fields(array('isDeleted' => 1,
-                          'deletedTime' => time()))
+                          'deletedTime' => time(),
+                          'status' => 0))
                         ->condition('nid', $node->nid)
                         ->execute();
                     drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
@@ -141,7 +143,8 @@ function soft_deletion_node_delete($node) {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('node')
                 ->fields(array('isDeleted' => 1,
-                  'deletedTime' => time()))
+                  'deletedTime' => time(),
+                  'status' => 0))
                 ->condition('nid', $node->nid)
                 ->execute();
             drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
@@ -158,7 +161,8 @@ function soft_deletion_file_delete($node) {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('file_managed')
                 ->fields(array('isDeleted' => 1,
-                  'deletedTime' => time()))
+                  'deletedTime' => time(),
+                  'status' => 0))
                 ->condition('fid', $node->fid)
                 ->execute();
             drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
