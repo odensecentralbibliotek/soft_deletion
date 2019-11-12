@@ -119,6 +119,9 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
                     }
                 }else {
                   $node = node_load($nid);
+                if (isset($node) && $node->type == 'inspirations_liste') {
+                        return;
+                }
                 if (isset($node) && $node->isDeleted != 1) {
                     db_update('node')
                         ->fields(array('isDeleted' => 1,
@@ -139,6 +142,9 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
  * Implements hook_node_delete().
  */
 function soft_deletion_node_delete($node) {
+    if (isset($node) && $node->type == 'inspirations_liste') {
+        return;
+    }
     if (user_access('access to put content into recycle bin')) {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('node')
@@ -158,6 +164,9 @@ function soft_deletion_node_delete($node) {
  */
 function soft_deletion_file_delete($node) {
     if (user_access('access to put content into recycle bin')) {
+        // Don't goto admin/file removing images from node edit
+        $node_edit = explode('/', parse_url($_SERVER['HTTP_REFERER'], PHP_URL_PATH));
+        if ($node_edit[1] != 'node') {
         if (isset($node) && $node->isDeleted != 1) {
             db_update('file_managed')
                 ->fields(array('isDeleted' => 1,
@@ -167,6 +176,7 @@ function soft_deletion_file_delete($node) {
                 ->execute();
             drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
             drupal_goto('admin/file');
+            }
         }
     }
 }
@@ -316,7 +326,7 @@ function soft_deletion_confirm_form_submit($form, &$form_state) {
  * Implements hook_views_query_alter().
  */
 function soft_deletion_views_query_alter(&$view, $query) {
-  if ($view->name == 'admin_views_file' || ($view->name == 'admin_views_node' && $view->current_display == 'system_1') || ($view->name == 'klon_af_administration_nodes' && $view->current_display == 'page_1') || $view->name == "ding_event" || $view->name == "ding_news" || $view->name == "news") {
+  if ($view->name == 'media_default' || $view->name == 'admin_views_file' || ($view->name == 'admin_views_node' && $view->current_display == 'system_1') || ($view->name == 'klon_af_administration_nodes' && $view->current_display == 'page_1') || $view->name == "ding_event" || $view->name == "ding_news" || $view->name == "news") {
     foreach ($query->where as &$condition_group) {
       $condition_group['conditions'][] = array(
         'field' => 'isDeleted',
@@ -332,7 +342,7 @@ function soft_deletion_views_query_alter(&$view, $query) {
  */
 function soft_deletion_node_view($node, $view_mode, $langcode) {
   if (isset($node->isDeleted)) {
-    if ($node->isDeleted == '1') {
+    if ($node->isDeleted == '1' && $view_mode != 'search_index') {
       drupal_set_message(t("Access denied."));
       drupal_goto('admin/content');
     }
@@ -344,7 +354,7 @@ function soft_deletion_node_view($node, $view_mode, $langcode) {
  */
 function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
 
-  if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']) && $form['#node']->isDeleted == '1')) {
+  if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']->isDeleted) && $form['#node']->isDeleted == '1')) {
     drupal_set_message(t("Access denied."));
     drupal_goto('admin/content');
   }
