@@ -129,6 +129,10 @@ function soft_deletion_entity_delete_multiple($entity_type, $nids) {
                           'status' => 0))
                         ->condition('nid', $node->nid)
                         ->execute();
+                    db_update('node_revision')
+                        ->fields(array('status' => 0))
+                        ->condition('nid', $node->nid)
+                        ->execute();
                     drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
                 }
                 }
@@ -151,6 +155,10 @@ function soft_deletion_node_delete($node) {
                 ->fields(array('isDeleted' => 1,
                   'deletedTime' => time(),
                   'status' => 0))
+                ->condition('nid', $node->nid)
+                ->execute();
+            db_update('node_revision')
+                ->fields(array('status' => 0))
                 ->condition('nid', $node->nid)
                 ->execute();
             drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
@@ -227,13 +235,15 @@ function soft_deletion_recycle_content() {
   if (user_access('access to restore content from recycle bin')) {
     drupal_set_title(t('Indholdet af papirkurven'));
     $nodes = node_load_multiple(array(), array('isDeleted' => 1));
+
     $header = array(
       'Titel', 'Type', 'Oprettet', 'Slettet', 'Udgivet', 'På forsiden', 'Handling',
     );
     $rows = array();
     $no_yes = array('No', 'Yes');
-    if (count($nodes) > 0) {
-      foreach ($nodes as $node) {
+    if (count($nodes['node']) > 0) {
+      foreach ($nodes['node'] as $info) {
+        $node = node_load($info->nid);
         $rows[] = array(
           $node->title,
           $node->type,
