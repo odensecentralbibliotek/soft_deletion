@@ -242,8 +242,8 @@ function soft_deletion_recycle_content() {
     $rows = array();
     $no_yes = array('No', 'Yes');
     if (count($nodes) > 0) {
-      foreach ($nodes as $info) {
-        $node = node_load($info->nid);
+      foreach ($nodes as $node) {
+        
         $rows[] = array(
           $node->title,
           $node->type,
