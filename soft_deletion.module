@@ -8,7 +8,8 @@
 /**
  * Implements hook_permission().
  */
-function soft_deletion_permission() {
+function soft_deletion_permission()
+{
   $permissions = array();
 
   $permissions['access to put content into recycle bin'] = array(
@@ -27,7 +28,8 @@ function soft_deletion_permission() {
 /**
  * Implements hook_schema_alter().
  */
-function soft_deletion_schema_alter(&$schema) {
+function soft_deletion_schema_alter(&$schema)
+{
   $schema['node']['fields']['isDeleted'] = array(
     'description' => 'Content deletion status.',
     'type' => 'int',
@@ -57,7 +59,8 @@ function soft_deletion_schema_alter(&$schema) {
 /**
  * Implements Implements hook_entity_property_info_alter().
  */
-function soft_deletion_entity_property_info_alter(&$info) {
+function soft_deletion_entity_property_info_alter(&$info)
+{
   foreach ($info['node']['bundles'] as $entity_type) {
     $properties = $entity_type['properties'];
     $properties['properties']['isDeleted'] = array(
@@ -73,7 +76,7 @@ function soft_deletion_entity_property_info_alter(&$info) {
       'schema field' => 'deletedTime',
     );
   }
-    foreach ($info['file']['bundles'] as $entity_type) {
+  foreach ($info['file']['bundles'] as $entity_type) {
     $properties = $entity_type['properties'];
     $properties['properties']['isDeleted'] = array(
       'label' => t('isDeleted'),
@@ -91,108 +94,121 @@ function soft_deletion_entity_property_info_alter(&$info) {
   return $properties;
 }
 
-function soft_deletion_views_bulk_operations_form_alter(&$form, &$form_state, $vbo) {
-    if ($form_state['step'] == 'views_bulk_operations_confirm_form') {
-        if ($form_state['values']['operation'] == "action::views_bulk_operations_delete_item") {
-            soft_deletion_entity_delete_multiple($form_state['operation']->entityType, $form_state['values']['views_bulk_operations']);
-        }
+function soft_deletion_views_bulk_operations_form_alter(&$form, &$form_state, $vbo)
+{
+  if ($form_state['step'] == 'views_bulk_operations_confirm_form') {
+    if ($form_state['values']['operation'] == "action::views_bulk_operations_delete_item") {
+      soft_deletion_entity_delete_multiple($form_state['operation']->entityType, $form_state['values']['views_bulk_operations']);
     }
+  }
 }
 
 /**
  * Implements hook_entity_delete().
  */
-function soft_deletion_entity_delete_multiple($entity_type, $nids) {
-    if (user_access('access to put content into recycle bin')) {
-        foreach ($nids as $nid) {
-            if ($nid !== 0) {
-                if($entity_type == 'file') {
-                  $file = file_load($nid);
-                    if (isset($file) && $file->isDeleted != 1) {
-                       db_update('file_managed')
-                        ->fields(array('isDeleted' => 1,
-                          'deletedTime' => time(),
-                          'status' => 0))
-                        ->condition('fid', $file->fid)
-                        ->execute();
-                    drupal_set_message($file->filename . ' er blevet flyttet til papirkurven.');
-                    }
-                }else {
-                  $node = node_load($nid);
-                if (isset($node) && $node->type == 'inspirations_liste' || isset($node) && $node->type == 'ding_event') {
-                        return;
-                }
-                if (isset($node) && $node->isDeleted != 1) {
-                    db_update('node')
-                        ->fields(array('isDeleted' => 1,
-                          'deletedTime' => time(),
-                          'status' => 0))
-                        ->condition('nid', $node->nid)
-                        ->execute();
-                    db_update('node_revision')
-                        ->fields(array('status' => 0))
-                        ->condition('nid', $node->nid)
-                        ->execute();
-                    drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
-                }
-                }
-            }
-        }
-        drupal_goto(current_path());
-    }
-}
-
-/**
- * Implements hook_node_delete().
- */
-function soft_deletion_node_delete($node) {
-    if (isset($node) && $node->type == 'inspirations_liste' || isset($node) && $node->type == 'ding_event') {
-        return;
-    }
-    if (user_access('access to put content into recycle bin')) {
-        if (isset($node) && $node->isDeleted != 1) {
-            db_update('node')
-                ->fields(array('isDeleted' => 1,
-                  'deletedTime' => time(),
-                  'status' => 0))
-                ->condition('nid', $node->nid)
-                ->execute();
-            db_update('node_revision')
-                ->fields(array('status' => 0))
-                ->condition('nid', $node->nid)
-                ->execute();
-            drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
-            drupal_goto('admin/content');
-        }
-    }
-}
-
-/**
- * Implements hook_node_delete().
- */
-function soft_deletion_file_delete($node) {
-    if (user_access('access to put content into recycle bin')) {
-        // Don't goto admin/file removing images from node edit
-        $node_edit = explode('/', parse_url($_SERVER['HTTP_REFERER'], PHP_URL_PATH));
-        if ($node_edit[1] != 'node') {
-        if (isset($node) && $node->isDeleted != 1) {
+function soft_deletion_entity_delete_multiple($entity_type, $nids)
+{
+  if (user_access('access to put content into recycle bin')) {
+    foreach ($nids as $nid) {
+      if ($nid !== 0) {
+        if ($entity_type == 'file') {
+          $file = file_load($nid);
+          if (isset($file) && $file->isDeleted != 1) {
             db_update('file_managed')
-                ->fields(array('isDeleted' => 1,
-                  'deletedTime' => time(),
-                  'status' => 0))
-                ->condition('fid', $node->fid)
-                ->execute();
+              ->fields(array(
+                'isDeleted' => 1,
+                'deletedTime' => time(),
+                'status' => 0
+              ))
+              ->condition('fid', $file->fid)
+              ->execute();
+            drupal_set_message($file->filename . ' er blevet flyttet til papirkurven.');
+          }
+        } else {
+          $node = node_load($nid);
+          if (isset($node) && $node->type == 'inspirations_liste' || isset($node) && $node->type == 'ding_event') {
+            return;
+          }
+          if (isset($node) && $node->isDeleted != 1) {
+            db_update('node')
+              ->fields(array(
+                'isDeleted' => 1,
+                'deletedTime' => time(),
+                'status' => 0
+              ))
+              ->condition('nid', $node->nid)
+              ->execute();
+            db_update('node_revision')
+              ->fields(array('status' => 0))
+              ->condition('nid', $node->nid)
+              ->execute();
             drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
-            drupal_goto('admin/file');
-            }
+          }
         }
+      }
     }
+    drupal_goto(current_path());
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function soft_deletion_node_delete($node)
+{
+  if (isset($node) && $node->type == 'inspirations_liste' || isset($node) && $node->type == 'ding_event') {
+    return;
+  }
+  if (user_access('access to put content into recycle bin')) {
+    if (isset($node) && $node->isDeleted != 1) {
+      db_update('node')
+        ->fields(array(
+          'isDeleted' => 1,
+          'deletedTime' => time(),
+          'status' => 0
+        ))
+        ->condition('nid', $node->nid)
+        ->execute();
+      db_update('node_revision')
+        ->fields(array('status' => 0))
+        ->condition('nid', $node->nid)
+        ->execute();
+      drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
+      drupal_goto('admin/content');
+    }
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function soft_deletion_file_delete($node)
+{
+  if (user_access('access to put content into recycle bin')) {
+    // Don't goto admin/file removing images from node edit
+    $node_edit = explode('/', parse_url($_SERVER['HTTP_REFERER'], PHP_URL_PATH));
+    if ($node_edit[1] != 'node') {
+      if (isset($node) && $node->isDeleted != 1) {
+        db_update('file_managed')
+          ->fields(array(
+            'isDeleted' => 1,
+            'deletedTime' => time(),
+            'status' => 0
+          ))
+          ->condition('fid', $node->fid)
+          ->execute();
+        drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
+        drupal_goto('admin/file');
+      }
+    }
+  }
 }
 
 /**
  * Implements hook_menu().
  */
-function soft_deletion_menu() {
+function soft_deletion_menu()
+{
   $items['recycle-content'] = array(
     'title' => 'Papirkurv',
     'menu_name' => 'management',
@@ -217,21 +233,23 @@ function soft_deletion_menu() {
   return $items;
 }
 
-function soft_deletion_user_has_role() {    
-    $access = user_access('access to restore content from recycle bin');
+function soft_deletion_user_has_role()
+{
+  $access = user_access('access to restore content from recycle bin');
 
   if (!$access) {
-      return FALSE;
-  }else{
-   
-        return TRUE;    
+    return FALSE;
+  } else {
+
+    return TRUE;
   }
 }
 
 /**
  * Implements soft_deletion_recycle_content().
  */
-function soft_deletion_recycle_content() {
+function soft_deletion_recycle_content()
+{
   if (user_access('access to restore content from recycle bin')) {
     drupal_set_title(t('Indholdet af papirkurven'));
     $nodes = node_load_multiple(array(), array('isDeleted' => 1));
@@ -243,7 +261,7 @@ function soft_deletion_recycle_content() {
     $no_yes = array('No', 'Yes');
     if (count($nodes) > 0) {
       foreach ($nodes as $node) {
-        
+
         $rows[] = array(
           $node->title,
           $node->type,
@@ -269,13 +287,11 @@ function soft_deletion_recycle_content() {
           l(t('Gendan'), 'recycle-confirm/file/' . $file->fid),
         );
       }
-    }
-    else {
+    } else {
       drupal_set_message(t('Ingen data fundet i papirkurven.'));
     }
     return theme('table', array('header' => $header, 'rows' => $rows));
-  }
-  else {
+  } else {
     drupal_set_message(t('Access denied.'));
     drupal_goto('admin/content');
   }
@@ -284,7 +300,8 @@ function soft_deletion_recycle_content() {
 /**
  * Implements soft_deletion_recycle_confirm().
  */
-function soft_deletion_confirm_form($form, &$form_state) {
+function soft_deletion_confirm_form($form, &$form_state)
+{
   if (user_access('access to restore content from recycle bin')) {
     drupal_set_title(t('Gendannelses-Konformation'));
     $question = 'Er du sikker du vil gendanne indholdet?';
@@ -294,8 +311,7 @@ function soft_deletion_confirm_form($form, &$form_state) {
     $no = 'Annuller';
     $name = 'Godkend';
     return confirm_form($form, $question, $path, $description, $yes, $no, $name);
-  }
-  else {
+  } else {
     drupal_set_message(t('Access denied.'));
     drupal_goto('admin/content');
   }
@@ -304,30 +320,29 @@ function soft_deletion_confirm_form($form, &$form_state) {
 /**
  * Implements hook_form_submit().
  */
-function soft_deletion_confirm_form_submit($form, &$form_state) {
+function soft_deletion_confirm_form_submit($form, &$form_state)
+{
   if ($form_state['values']['op'] == 'Gendan' && arg(1) == 'node' && is_numeric(arg(2))) {
     $nid = arg(2);
-          db_update('node')
-        ->fields(array('isDeleted' => 0))
-        ->condition('nid', $nid)
-        ->execute();
-              //Clear cache on field to update value on front end
+    db_update('node')
+      ->fields(array('isDeleted' => 0))
+      ->condition('nid', $nid)
+      ->execute();
+    //Clear cache on field to update value on front end
     drupal_flush_all_caches();
     drupal_set_message(t("Indholdet er blevet gendannet."));
     drupal_goto('recycle-content');
-  }
-  elseif ($form_state['values']['op'] == 'Gendan' && arg(1) == 'file' && is_numeric(arg(2))) {
-          $fid = arg(2);
-          db_update('file_managed')
-        ->fields(array('isDeleted' => 0))
-        ->condition('fid', $fid)
-        ->execute();
-              //Clear cache on field to update value on front end
+  } elseif ($form_state['values']['op'] == 'Gendan' && arg(1) == 'file' && is_numeric(arg(2))) {
+    $fid = arg(2);
+    db_update('file_managed')
+      ->fields(array('isDeleted' => 0))
+      ->condition('fid', $fid)
+      ->execute();
+    //Clear cache on field to update value on front end
     drupal_flush_all_caches();
     drupal_set_message(t("Indholdet er blevet gendannet."));
     drupal_goto('recycle-content');
-  }
-  else {
+  } else {
     $form_state['redirect'] = 'recycle-content';
   }
 }
@@ -335,7 +350,8 @@ function soft_deletion_confirm_form_submit($form, &$form_state) {
 /**
  * Implements hook_views_query_alter().
  */
-function soft_deletion_views_query_alter(&$view, $query) {
+function soft_deletion_views_query_alter(&$view, $query)
+{
   if ($view->name == 'media_default' || $view->name == 'admin_views_file' || ($view->name == 'admin_views_node' && $view->current_display == 'system_1') || ($view->name == 'klon_af_administration_nodes' && $view->current_display == 'page_1') || $view->name == "ding_event" || $view->name == "ding_news" || $view->name == "news") {
     foreach ($query->where as &$condition_group) {
       $condition_group['conditions'][] = array(
@@ -350,7 +366,8 @@ function soft_deletion_views_query_alter(&$view, $query) {
 /**
  * Implements hook_node_view().
  */
-function soft_deletion_node_view($node, $view_mode, $langcode) {
+function soft_deletion_node_view($node, $view_mode, $langcode)
+{
   if (isset($node->isDeleted)) {
     if ($node->isDeleted == '1' && $view_mode != 'search_index') {
       drupal_set_message(t("Access denied."));
@@ -362,7 +379,8 @@ function soft_deletion_node_view($node, $view_mode, $langcode) {
 /**
  * Implements hook_form_alter().
  */
-function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
+function soft_deletion_form_alter(&$form, &$form_state, $form_id)
+{
 
   if ((isset($form['#node_edit_form']) && $form['#node_edit_form'] == '1') && (isset($form['#node']->isDeleted) && $form['#node']->isDeleted == '1')) {
     drupal_set_message(t("Access denied."));
@@ -373,39 +391,41 @@ function soft_deletion_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Implements hook_cron().
  */
-function soft_deletion_cron() {
-    $query = new EntityFieldQuery();
-    $query->entityCondition('entity_type', 'node')
+function soft_deletion_cron()
+{
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'node')
     ->propertyCondition('isDeleted', 1)
     ->propertyCondition('deletedTime',  strtotime('-2 month'), '<=');
-    $nodes = $query->execute();
+  $nodes = $query->execute();
 
-    $file_query = new EntityFieldQuery();
-    $file_query->entityCondition('entity_type', 'file')
+  $file_query = new EntityFieldQuery();
+  $file_query->entityCondition('entity_type', 'file')
     ->propertyCondition('isDeleted', 1)
     ->propertyCondition('deletedTime',  strtotime('-2 month'), '<=');
-    $files = $file_query->execute();
+  $files = $file_query->execute();
 
-    $queue = DrupalQueue::get('papirkurv');
-    $file_queue = DrupalQueue::get('papirkurv_filer');
+  $queue = DrupalQueue::get('papirkurv');
+  $file_queue = DrupalQueue::get('papirkurv_filer');
 
-    // Process the queue till it is empty.
-    if ($queue->numberOfItems() == 0) {
-      foreach ($nodes['node'] as $node) {
-        $queue->createItem($node->nid);
-      }
+  // Process the queue till it is empty.
+  if ($queue->numberOfItems() == 0) {
+    foreach ($nodes['node'] as $node) {
+      $queue->createItem($node->nid);
     }
-      if ($file_queue->numberOfItems() == 0) {
-      foreach ($files['file'] as $file) {
-        $file_queue->createItem($file->fid);
-      }
+  }
+  if ($file_queue->numberOfItems() == 0) {
+    foreach ($files['file'] as $file) {
+      $file_queue->createItem($file->fid);
     }
+  }
 }
 
 /**
  * Implements hook_cron_queue_info().
  */
-function soft_deletion_cron_queue_info() {
+function soft_deletion_cron_queue_info()
+{
   $queues['papirkurv'] = array(
     'worker callback' => 'soft_deletion_worker',
     'time' => 60,
@@ -423,10 +443,10 @@ function soft_deletion_cron_queue_info() {
  * @param mixed $data
  *   User account.
  */
-function soft_deletion_worker($data) {
+function soft_deletion_worker($data)
+{
 
-        node_delete($data);
-    
+  node_delete($data);
 }
 /**
  * Cron queue worker callback function.
@@ -434,7 +454,10 @@ function soft_deletion_worker($data) {
  * @param mixed $data
  *   User account.
  */
-function soft_deletion_worker_files($fid) {
-        $data = file_load($fid);
-        file_delete($data);
+function soft_deletion_worker_files($fid)
+{
+  $file = file_load($fid);
+  if ($file) {
+    file_delete($file);
+  }
 }
