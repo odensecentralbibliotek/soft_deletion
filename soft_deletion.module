@@ -198,7 +198,7 @@ function soft_deletion_file_delete($node)
           ->condition('fid', $node->fid)
           ->execute();
         drupal_set_message($node->title . ' er blevet flyttet til papirkurven.');
-        drupal_goto('admin/file');
+        //drupal_goto('admin/file');
       }
     }
   }
